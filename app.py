@@ -11,18 +11,6 @@ from sklearn.model_selection import train_test_split
 
 st.set_page_config(layout="wide")
 
-def remove_outliers(df, category = None, input = None):
-    if category is None or input is None:
-        Q1 = df['math score'].quantile(0.25)
-        Q3 = df['math score'].quantile(0.75)
-    else:
-        Q1 = df[df[category] == input[category]]['math score'].quantile(0.25)
-        Q3 = df[df[category] == input[category]]['math score'].quantile(0.75)
-    IQR = Q3 - Q1
-
-    df = df[~((df['math score'] < (Q1 - 1.5 * IQR)) | (df['math score'] > (Q3 + 1.5 * IQR)))]
-    return df
-
 # hasExterior: 0 et 1
 # hasLift : 0 et 1
 # hasParking : 0 et 1
@@ -31,7 +19,6 @@ def remove_outliers(df, category = None, input = None):
 # Status: [’good’, ‘renew’]
 # RoomNumber = [1-7]
 # Size: 22-387
-
 
 
 def random_plot():
@@ -51,14 +38,13 @@ def main():
     # INIT dataset variables
     Input = {}
     df_temp = pd.read_csv('ml_dataset.csv')
+    print("BEF: ", df_temp.columns)
     df_temp = df_temp.drop(columns=['newDevelopment', 'district', 'id'])
-    # df_temp["status"] = df_temp['status'].replace('good', '0').astype(float)
-    # df_temp["status"] = df_temp['status'].replace('renew', '1').astype(float)
+    print("COLUMNS: ", df_temp.columns)
     col1,col2, col3 = st.columns([3,3,3])
     buttonPress = False
 
     with col1:
-#        Input["gender"] = st.radio('Tenant gender', ['male', 'female', 'mixed'])
         Input["hasExterior"] = st.radio('Terrace', [0, 1])
         Input['status'] = st.selectbox('Status', ['good', 'renew'])
 
@@ -77,71 +63,53 @@ def main():
     if buttonPress:
         print("INPUT: ", Input)
 
-
     if buttonPress:
-        Input['price'] = 0
         features = ['bathroomsNumber', 'hasExterior', 'hasLift', 'propertyType', 'roomsNumber', 'size', 'status', 'hasParking']
 
-#        df1 = pd.DataFrame(df_temp, columns=df_columns)
         df = pd.DataFrame.from_records([(Input)])
-        df_temp.append(df)
 
-        # print("TMP", df_temp.shape)
-        class_features = ['propertyType']
+        class_features = ['propertyType', 'status']
         target = ['price']
-        # print(df.head)
-#        print("DF: ", df.shape)
-        train, test = train_test_split(df_temp, test_size=0.2)
         encoder = preprocessing.LabelEncoder()
 
-        # for class_feature in class_features:
-        #     train[class_feature] = encoder.fit_transform(train[class_feature])
-        #     test[class_feature] = encoder.fit_transform(test[class_feature])
+        for class_feature in class_features:
+            df[class_feature] = encoder.fit_transform(df[class_feature])
+            df_temp[class_feature] = encoder.fit_transform(df_temp[class_feature])
 
-        print("SHAPE: ", train.shape)
-        # print("X SHAPE: ", df.shape)
-        # print("Y SHAPE: ", df_temp.shape)
         model = LinearRegression()
-        model.fit(train[features], train[target])
-        model.fit(df.values, df_temp)
+        model.fit(df_temp[features], df_temp[target])
 
-        # toto = model.predict(test[features])
-        # print("TOTO: ", toto.shape)
-        # fig, ax = plt.subplots(figsize=(30, 10))
-        # sns.regplot(x='predictions', y='price', data=test)
-
-
-        # conditions = np.where(
-        #       (df_temp['bathroomsNumber'] == Input['bathroomsNumber'])
-        #     & (df_temp['propertyType'] == Input['propertyType'])
-        #     & (df_temp['roomsNumber'] == Input['roomsNumber'])
-        #     & (df_temp['hasExterior'] == Input['hasExterior'])
-        #     & (df_temp['hasParking'] == Input['hasParking'])
-        #     & (df_temp['hasLift'] == Input['hasExterior'])
-        #     & (df_temp['status'] == Input['status'])
-        #     & (df_temp['size'] == Input['size']))
-        
-        # df = df_temp.loc[conditions]
-        col3, col4, col5 = st.columns([2, 2, 2])
-        with col3:
-#            df = remove_outliers(df)
-            st.write(df_temp)
-#            st.write("Legend of my plot")
-#            random_plot()
-        # CODE EXAMPLE FOR A COLUMN
-        # with col4:
-        #     st.write("Here you can see the median of math score for female people")
-        #     df = remove_outliers(df, "gender", Input)
-        #     fig = px.box(df[df["gender"] == Input["gender"]], y="math score", x="gender", width=450, height=450)
-        #     st.plotly_chart(fig)
+        toto = model.predict(df)
+        col4,  = st.columns(1)
         with col4:
-            st.write("Legend of my plot")
-            random_plot()
-        with col5:
-            st.write("Legend of my plot")
-            random_plot()
-#       IF YOU WANT MORE COLUMN...
-#         col6, col7, col8 = st.columns([2, 2, 2])
+#            df = remove_outliers(df)
+            # r_2 = model.score(df_temp[features], df_temp[target])
+            # st.write(r_2)
+            # st.write(df_temp)
+            final_price = toto[0][0] / 12.00
+            print(final_price)
+            # html_cide = f"""
+            #     <style>
+            #     .big-font {
+            #         font-size:100px !important;
+            #     }
+            #     </style>
+            #     <p class="big-font">This is the {final_price}</p>
+            #     """
+            st.markdown(f"""
+                <style>
+                span.big-font {{
+                    font-size:20px !important;
+                    text-align: center;
+                }}
+                b {{ color: MEDIUMSEAGREEN }}
+                </style>
+                <span class="big-font">The average rent price will be <b>{final_price} €</b> / month</span>
+                """, unsafe_allow_html=True)
+
+
+
+
 
 
 if __name__ == '__main__':
