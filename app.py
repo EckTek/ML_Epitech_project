@@ -6,41 +6,52 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
-from sklearn.neural_network import MLPRegressor
-from sklearn.model_selection import train_test_split
+import warnings
 
+warnings.filterwarnings('ignore')
 st.set_page_config(layout="wide")
 
-# hasExterior: 0 et 1
-# hasLift : 0 et 1
-# hasParking : 0 et 1
-# bathroomsNumber ; 1-5
-# Property type: [‘flat’, ‘studio’, ‘penthouse’, ‘duplex’]
-# Status: [’good’, ‘renew’]
-# RoomNumber = [1-7]
-# Size: 22-387
+def price_prediction(inputs):
+        # Create dataframes
+        df_file = pd.read_csv('ml_dataset.csv')
+        df_file = df_file.drop(columns=['newDevelopment', 'district', 'id'])
 
+        df_input = pd.DataFrame.from_records([(inputs)])
 
-def random_plot():
-    x = np.random.exponential(2, 10000)
-    st.line_chart(data=x, width=0, height=0)
+        # Preparing properties for model
+        features = ['bathroomsNumber', 'hasExterior', 'hasLift', 'propertyType', 'roomsNumber', 'size', 'status', 'hasParking']
+        class_features = ['propertyType', 'status']
+        target = ['price']
+
+        # Convert string type columns to numeric type
+        encoder = preprocessing.LabelEncoder()
+        for class_feature in class_features:
+            df_input[class_feature] = encoder.fit_transform(df_input[class_feature])
+            df_file[class_feature] = encoder.fit_transform(df_file[class_feature])
+
+        # Apply Linear Regression model
+        model = LinearRegression()
+        model.fit(df_file[features], df_file[target])
+        price = model.predict(df_input)
+
+        #Price is for one year so we divide here by 12
+        final_price = price[0][0] / 12.0
+
+        return round(final_price, 2)
 
 def main():
     # title
     html_title = """
     <div>
-    <h1 style="color:MEDIUMSEAGREEN;text-align:left;"> Price housing calculation in Barcelona <i class="fas fa-home"></i></h1>
+    <h1 style="color:MEDIUMSEAGREEN;text-align:left;"> Price housing calculation in Barcelona <i class="fas fa-home"></i></h1><br />
     </div>
     """
     st.markdown(html_title, unsafe_allow_html=True)
-    st.markdown("Welcome to our website ! The purpose of this website is to calculate the average price of your future accomodation, according to your selected criteria. Have fun !")
-
-    # INIT dataset variables
+    st.markdown("""Welcome to our website ! The purpose of this website is to calculate the average price of your future accomodation, according to your selected criteria. Have fun !<br />""", unsafe_allow_html=True)
+    
+    # Create dict to store input values
     Input = {}
-    df_temp = pd.read_csv('ml_dataset.csv')
-    print("BEF: ", df_temp.columns)
-    df_temp = df_temp.drop(columns=['newDevelopment', 'district', 'id'])
-    print("COLUMNS: ", df_temp.columns)
+
     col1,col2, col3 = st.columns([3,3,3])
     buttonPress = False
 
@@ -53,49 +64,18 @@ def main():
         Input["bathroomsNumber"] = st.selectbox('Bathroom', [1, 2, 3, 4, 5])
         Input['propertyType'] = st.selectbox('Type of property', ['flat', 'studio', 'penthouse', 'duplex'])
 
-
     with col3:
         Input["hasParking"] = st.radio('Parking', [0, 1])
         Input['roomsNumber'] = st.selectbox("Number of rooms", [1, 2, 3, 4, 5, 6, 7])
         Input['size'] = st.selectbox('Size (in squared meter)', [x for x in range(22, 387)])
 
     buttonPress = st.button('Predict')
-    if buttonPress:
-        print("INPUT: ", Input)
 
     if buttonPress:
-        features = ['bathroomsNumber', 'hasExterior', 'hasLift', 'propertyType', 'roomsNumber', 'size', 'status', 'hasParking']
+        price = price_prediction(Input)
 
-        df = pd.DataFrame.from_records([(Input)])
-
-        class_features = ['propertyType', 'status']
-        target = ['price']
-        encoder = preprocessing.LabelEncoder()
-
-        for class_feature in class_features:
-            df[class_feature] = encoder.fit_transform(df[class_feature])
-            df_temp[class_feature] = encoder.fit_transform(df_temp[class_feature])
-
-        model = LinearRegression()
-        model.fit(df_temp[features], df_temp[target])
-
-        toto = model.predict(df)
-        col4,  = st.columns(1)
+        col4, = st.columns(1)
         with col4:
-#            df = remove_outliers(df)
-            # r_2 = model.score(df_temp[features], df_temp[target])
-            # st.write(r_2)
-            # st.write(df_temp)
-            final_price = toto[0][0] / 12.00
-            print(final_price)
-            # html_cide = f"""
-            #     <style>
-            #     .big-font {
-            #         font-size:100px !important;
-            #     }
-            #     </style>
-            #     <p class="big-font">This is the {final_price}</p>
-            #     """
             st.markdown(f"""
                 <style>
                 span.big-font {{
@@ -104,10 +84,8 @@ def main():
                 }}
                 b {{ color: MEDIUMSEAGREEN }}
                 </style>
-                <span class="big-font">The average rent price will be <b>{final_price} €</b> / month</span>
+                <span class="big-font">The average rent price will be <b>{price} €</b> / month</span>
                 """, unsafe_allow_html=True)
-
-
 
 
 
